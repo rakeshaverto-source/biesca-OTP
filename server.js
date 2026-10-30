@@ -97,12 +97,34 @@ async function sendWhatsAppOtp(phone, otp, name) {
 }
 
 // ---------- Shopify ----------
+// Dev Dashboard apps: token via client credentials grant (valid 24h, cached + auto-refreshed).
+// A fixed SHOPIFY_ADMIN_TOKEN (old-style custom app) is still supported if set.
+let cachedToken = null, tokenExpires = 0;
+async function getShopifyToken() {
+  if (env.SHOPIFY_ADMIN_TOKEN) return env.SHOPIFY_ADMIN_TOKEN;
+  if (cachedToken && Date.now() < tokenExpires) return cachedToken;
+  const r = await fetch(`https://${env.SHOPIFY_STORE}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.SHOPIFY_CLIENT_ID || '',
+      client_secret: env.SHOPIFY_CLIENT_SECRET || '',
+      grant_type: 'client_credentials',
+    }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) throw new Error(`Shopify token ${r.status}: ${JSON.stringify(j)}`);
+  cachedToken = j.access_token;
+  tokenExpires = Date.now() + (Number(j.expires_in || 86399) - 300) * 1000; // refresh 5 min early
+  return cachedToken;
+}
+
 async function shopifyGql(query, variables) {
   const r = await fetch(
     `https://${env.SHOPIFY_STORE}/admin/api/${env.SHOPIFY_API_VERSION || '2025-07'}/graphql.json`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_TOKEN },
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': await getShopifyToken() },
       body: JSON.stringify({ query, variables }),
     }
   );
@@ -112,7 +134,7 @@ async function shopifyGql(query, variables) {
 }
 
 async function upsertCustomer(phone, name, optIn) {
-  if (!env.SHOPIFY_ADMIN_TOKEN) return null;
+  if (!env.SHOPIFY_ADMIN_TOKEN && !(env.SHOPIFY_CLIENT_ID && env.SHOPIFY_CLIENT_SECRET)) return null;
   const e164 = '+' + phone;
   const found = await shopifyGql(
     `query($q:String!){ customers(first:1, query:$q){ nodes{ id tags } } }`,
