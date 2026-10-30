@@ -1,0 +1,18 @@
+{
+  "name": "biesca-otp-login",
+  "version": "1.0.0",
+  "description": "WhatsApp OTP login (AiSensy) for Biesca Shopify store",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}
