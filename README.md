@@ -24,7 +24,7 @@ npm start
 ## First deploy (Ubuntu VPS)
 
 ```bash
-git clone https://github.com/<your-username>/biesca-otp.git /var/www/biesca-otp
+git clone https://github.com/rakeshaverto-source/biesca-OTP.git /var/www/biesca-otp
 cd /var/www/biesca-otp
 npm install --omit=dev
 cp .env.example .env && chmod 600 .env
